@@ -7,6 +7,8 @@ import { FormState, ProjectInterface, SessionInterface } from "@/common.types";
 import FormField from "./FormField";
 import { categoryFilters } from "@/constant";
 import CustomMenu from "./CustomMenu";
+import Button from "./Button";
+import { createNewProject, fetchToken, updateProject } from "@/lib/actions";
 
 type Props = {
   type: string;
@@ -27,9 +29,59 @@ const ProjectForm = ({ type, session, project }: Props) => {
     category: project?.category || "",
   });
 
-  const handleFormSubmit = async (e: FormEvent) => {};
+  const handleFormSubmit = async (e: FormEvent) => {
+    e.preventDefault();
 
-  const handleChangeImage = (e: ChangeEvent<HTMLInputElement>) => {};
+    setIsSubmitting(true);
+
+    const { token } = await fetchToken();
+
+    try {
+      if (type === "create") {
+        await createNewProject(form, session?.user?.id, token);
+
+        router.push("/");
+      }
+
+      if (type === "edit") {
+        await updateProject(form, project?.id as string, token);
+
+        router.push("/");
+      }
+    } catch (error) {
+      alert(
+        `Failed to ${
+          type === "create" ? "create" : "edit"
+        } a project. Try again!`
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleChangeImage = (e: ChangeEvent<HTMLInputElement>) => {
+    e.preventDefault();
+
+    const file = e.target.files?.[0];
+
+    if (!file) return;
+
+    if (!file.type.includes("image")) {
+      alert("Please upload an image!");
+
+      return;
+    }
+
+    const reader = new FileReader();
+
+    reader.readAsDataURL(file);
+
+    reader.onload = () => {
+      const result = reader.result as string;
+
+      handleStateChange("image", result);
+    };
+  };
 
   const handleStateChange = (fieldName: keyof FormState, value: string) => {
     setForm((prevForm) => ({ ...prevForm, [fieldName]: value }));
@@ -98,7 +150,16 @@ const ProjectForm = ({ type, session, project }: Props) => {
       />
 
       <div className="flexStart w-full">
-        <button>Create</button>
+        <Button
+          title={
+            isSubmitting
+              ? `${type === "create" ? "Creating" : "Editing"}`
+              : `${type === "create" ? "Create" : "Edit"}`
+          }
+          type="submit"
+          leftIcon={isSubmitting ? "" : "/plus.svg"}
+          submitting={isSubmitting}
+        />
       </div>
     </form>
   );
